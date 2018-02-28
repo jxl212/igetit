@@ -7,4 +7,7 @@ applications:
   command: python3 app.py
   memory: 128M
   domain: mybluemix.net
-  host: iGetIt
+  host: igetit-app
+  docker:
+    image: jxl212/igetit:latest
+    username: jxl212
