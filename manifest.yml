@@ -7,6 +7,4 @@ applications:
   memory: 128M
   domain: mybluemix.net
   host: igetit
-  docker:
-    image: jxl212/igetit:latest
-    username: jxl212
+  health-check-type: process
