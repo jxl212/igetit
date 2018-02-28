@@ -1,0 +1,12 @@
+pymongo[srv,tls]>=3.6.0
+dnspython>=1.15.0
+
+asyncio
+aiohttp
+requests
+
+termcolor
+
+shapely
+pyproj
+
