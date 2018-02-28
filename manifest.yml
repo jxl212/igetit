@@ -4,7 +4,7 @@ applications:
   timeout: 180
   name: iGetIt
   buildpack: python_buildpack
-  command: python3 app.py
+  command: python app.py
   memory: 128M
   domain: mybluemix.net
   host: igetit-app
