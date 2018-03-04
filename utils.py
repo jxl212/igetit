@@ -76,7 +76,8 @@ def process_message_for_groupme(data):
 				bot_id=doc['iSawIt_id']
 				send_groupme(bot_id,data)
 		c.update({prefix})
-	print(f"{c['FAIL']}/{c['PASS']} {data}")
+	if c['PASS'] > 0:
+		print(f"{c['FAIL']}/{c['PASS']} {data}")
 
 nys = Proj(init='EPSG:32118')
 def distance_between(p1,p2):
