@@ -2,7 +2,7 @@ import os, time,json
 
 from pymongo import MongoClient
 from termcolor import cprint, colored
-
+from collections import Counter
 from pyproj import Proj
 from shapely.geometry import shape, Point
 import requests
@@ -63,22 +63,20 @@ def process_message_for_groupme(data):
 	# with MongoClient("mongodb+srv://{}:{}@cluster0-m6kv9.mongodb.net/nyc".format(mongodb_user,mongodb_pass)) as mongo_client:
 	# 	db = mongo_client.get_database()
 
-	for doc in db.iControlIt.find({"iSawIt_id":{"$exists":True}},{"iSawIt_id":True,"_id":False}):
+	c=Counter({'FAIL':0,'PASS':0})
+	for doc in db.iControlIt.find({"iSawIt_id":{"$exists":True}},{"iSawIt_id":True,"hoods":True,"_id":False}):
 		# print("process_message_for_groupme {}".format(doc['iSawIt_id']))
 		# print(doc['iSawIt_id'], data.name, data.level)
 		prefix="FAIL"
-		# if True or data.hood in doc['hoods']:
-		min_iv = get_minIV_for(doc['iSawIt_id'], data.name, data.level)
-		# print(min_iv)
-		if type(min_iv) is int and \
-			(min_iv == 0 or (data.iv >= min_iv)):
-			prefix="PASS"
-
-			bot_id=doc['iSawIt_id']
-			# send_groupme(bot_id,data)
-	print(data)
-	# bot_id = "1413a583e8a010356a96336656"
-	# send_groupme(bot_id,data)
+		if data.hood in doc['hoods']:
+			min_iv = get_minIV_for(doc['iSawIt_id'], data.name, data.level)
+			if type(min_iv) is int and \
+				(min_iv == 0 or (data.iv >= min_iv)):
+				prefix="PASS"
+				bot_id=doc['iSawIt_id']
+				send_groupme(bot_id,data)
+		c.update({prefix})
+	print(f"{c['FAIL']}/{c['PASS']} {data}")
 
 nys = Proj(init='EPSG:32118')
 def distance_between(p1,p2):
