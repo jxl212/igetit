@@ -4,6 +4,7 @@ import datetime, time
 from shapely.geometry import shape, Point
 from pymongo import MongoClient
 from termcolor import colored
+from utils import point_is_in_manhattan
 
 pokemons_id2name=[]
 geometries=[]
@@ -65,8 +66,9 @@ weatherStringDic = ("None","Clear","Rainy","Partly Cloudy","Cloudy","Windy","Sno
 movesDict = build_pokemon_moves_dict()
 
 class Pokemon:
-
 	def __init__(self,data):
+		if data is None or data == {}:
+			return
 		self.pokemon_id = int(data.get('pokemon_id'))
 		self.lat = float(data.get('lat'))
 		self.lng = float(data.get('lng'))
@@ -91,8 +93,7 @@ class Pokemon:
 		self.name=pokemons_id2name[self.pokemon_id]
 		self.loc = Point(self.lng,self.lat)
 		self.hood=get_neighborhood_from(self.loc)
-		self.is_in_manhattan="?"
-		self.distance=None
+		self.is_in_manhattan, self.distance = point_is_in_manhattan(self.loc)
 
 	@property
 	def weatherString(self):
@@ -111,7 +112,7 @@ class Pokemon:
 	@property
 	def moveSet(self):
 		if self.move1 != "":
-			return self.move1 + " | " + self.move2
+			return f"{self.move1} | {self.move2}"
 		return ""
 
 	def __str__(self):
