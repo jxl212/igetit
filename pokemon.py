@@ -1,6 +1,6 @@
 import os
 import json
-import datetime, time
+import datetime, time, re
 from shapely.geometry import shape, Point
 from pymongo import MongoClient
 from termcolor import colored
