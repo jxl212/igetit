@@ -9,6 +9,7 @@ applications:
   host: igetit
   health-check-type: process
   env:
+    TZ: "America/New_York"
     GROUPME_TOKEN: "9f6dd8f0e53e0135af1949eb4576364f"
     MONGO_PASS: "whiskyM1"
     MONGO_USER: "mongoUser"
