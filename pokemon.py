@@ -120,7 +120,7 @@ class Pokemon:
 		if self.cp < 0:
 			txt_color="white"
 
-		txt=colored("{: <15s} (CP: {:5d})".format(self.name,self.cp).ljust(20), color=txt_color,attrs=['bold'] if self.iv > 90 and self.attack==15 else []).rjust(15)
+		txt=colored("{: <10s} (CP: {:5d})".format(self.name,self.cp).ljust(20), color=txt_color,attrs=['bold'] if self.iv > 90 and self.attack==15 else []).rjust(15)
 
 		txt+=" "+colored("{}%".format(self.iv).rjust(5), color=txt_color,attrs=['bold'] if self.iv > 90 else [])
 
@@ -128,13 +128,19 @@ class Pokemon:
 		if self.attack == 15:
 			txt_attrs=['bold']
 
-		txt+=" "+colored("({:>2} / {:>2} / {:>2})".format(self.attack,self.defence,self.stamina), color=txt_color,attrs=txt_attrs)
-		txt+=" "+colored("{}".format(self.level).ljust(3),color=txt_color,attrs=['bold'] if self.level > 30 else [])
+		txt+=" "+colored("({: >2}/{: >2}/{: >2})".format(self.attack,self.defence,self.stamina), color=txt_color,attrs=txt_attrs)
+		txt+=" "+colored("L{}".format(self.level).ljust(3),color=txt_color,attrs=['bold'] if self.level > 30 else [])
+
+		time_now = int(time.time())
+		seconds_left=int(self.despawn)-time_now
+		until=datetime.datetime.fromtimestamp(int(self.despawn)).strftime('%H:%M:%S')
+		time_left="{:2d}:{:02d}".format(seconds_left//60,seconds_left % 60)
+		txt+= f" Until: {until} ({time_left})"
 
 		txt+=f" gender:{self.gender: <4}" if self.gender != "" else ""
-		txt+="{:20.20}".format(self.moveSet)
-		txt+=" {:20.20}".format(self.hood)
-		txt+=f" {self.distance: >10.2f}m"
+		txt+=" {:10.10}".format(self.moveSet)
+		txt+=" {:10.10}".format(self.hood)
+		txt+=f" {self.distance:>6.2f}m" if self.distance != None else ""
 		txt+=" "+colored("{:<15}".format(self.weatherString), "blue" if self.weather not in [None,"None",""] else None)
 		txt+=" {}".format(self.nycpokemap_url)
 		if self.iv > 90 and self.attack == 15 and self.level > 30:
