@@ -27,18 +27,14 @@ async def read_website(url):
 	while True:
 		async with aiohttp.ClientSession(headers=headers,auto_decompress=True) as session:
 			async with session.get(url,params={"since":the_time, "mons":mons}) as response:
-				data  = await response.json()
+				data = await response.json()
+				meta_data = data.get('meta') if data else None
+				pokemon_data = data.get('pokemons') if data else None
+				the_time = meta_data.get('inserted') if meta_data else int(time.time())
 
-		if data:
+		if pokemon_data:
+			pokemons = [x for x in pokemon_data]
 			hoods_we_listen_for = get_hoods_to_listen_for()
-			pokemons_list = [x for x in data.get('pokemons')]
-			meta_data = data['meta']
-			the_time=meta_data['inserted']
-
-			pokemons=pokemons_list
-			t_start=time_now = int(time.time())
-
-			# print(len(pokemons_list))
 
 			for p in sorted(pokemons,key=lambda k: int(k['cp']),reverse=True ):
 				loc = Point(float(p.get('lng')),float(p.get('lat')))
@@ -48,15 +44,13 @@ async def read_website(url):
 				# pokemon.is_in_manhattan=in_manhattan
 				# pokemon.distance=distance
 
-				# out_counter.update(Counter({pokemon.name}))
+
 				if pokemon.hood in hoods_we_listen_for:
 					in_manhattan, distance = point_is_in_manhattan(pokemon.loc)
 					process_message_for_groupme(pokemon)
-					# in_counter.update(Counter({pokemon.name}))
 
-		print("...")
 		sys.stdout.flush()
-		await asyncio.sleep(30)
+		await asyncio.sleep(60)
 
 try:
 	loop.run_until_complete(read_website(url="https://nycpokemap.com/query2.php"))
