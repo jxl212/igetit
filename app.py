@@ -8,7 +8,7 @@ from pprint import pprint
 from utils import get_hoods_to_listen_for, process_message_for_groupme, point_is_in_manhattan,send_groupme
 from collections import Counter
 
-loop = asyncio.get_event_loop()
+loop = asyncio.get_event_loop( )
 old_data=[]
 async def read_website(url):
 	print("starting")
