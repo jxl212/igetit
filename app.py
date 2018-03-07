@@ -12,7 +12,7 @@ loop = asyncio.get_event_loop()
 
 async def read_website(url):
 	print("starting")
-	the_time=int(time.time()) - 60*5 # seconds
+	the_time=int(time.time()) #- 60*5 # seconds
 	mons=",".join([str(x) for x in range(1,386)])
 	headers = {'accept': '*/*',
 		'accept-encoding': 'gzip,deflate,br',
