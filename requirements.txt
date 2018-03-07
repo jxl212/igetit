@@ -3,10 +3,10 @@ dnspython>=1.15.0
 
 asyncio
 aiohttp
+brotlipy
 requests
 
 termcolor
 
 shapely
 pyproj
-
