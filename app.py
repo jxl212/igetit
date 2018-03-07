@@ -9,7 +9,7 @@ from utils import get_hoods_to_listen_for, process_message_for_groupme, point_is
 from collections import Counter
 
 loop = asyncio.get_event_loop()
-
+old_data=[]
 async def read_website(url):
 	print("starting")
 	the_time=int(time.time()) #- 60*5 # seconds
@@ -25,29 +25,34 @@ async def read_website(url):
 	in_counter=Counter()
 	out_counter=Counter()
 	while True:
+		now=int(time.time())
+		# prune data for pokemoon that have despawned
+		old_data=[x for x in old_data if int(x.get('despawn')) > now]
+
 		async with aiohttp.ClientSession(headers=headers,auto_decompress=True) as session:
 			async with session.get(url,params={"since":the_time, "mons":mons}) as response:
 				data = await response.json()
 				meta_data = data.get('meta') if data else None
 				pokemon_data = data.get('pokemons') if data else None
-				the_time = meta_data.get('inserted') if meta_data else int(time.time())
+			    the_time = meta_data.get('inserted') if meta_data else now
 
-		if pokemon_data:
-			pokemons = [x for x in pokemon_data]
-			hoods_we_listen_for = get_hoods_to_listen_for()
+		# pokemons is list of all new data, remove entries if it's a duplicated (in old_data)
+		pokemons = [x for x in pokemon_data if x not in old_data] if pokemon_data else []
 
-			for p in sorted(pokemons,key=lambda k: int(k['cp']),reverse=True ):
-				loc = Point(float(p.get('lng')),float(p.get('lat')))
-				# in_manhattan, distance = point_is_in_manhattan(loc)
-				pokemon=Pokemon(p)
-				# in_manhattan, distance = point_is_in_manhattan(pokemon.loc)
-				# pokemon.is_in_manhattan=in_manhattan
-				# pokemon.distance=distance
+		hoods_we_listen_for = get_hoods_to_listen_for()
 
+		for raw_p in sorted(pokemons,key=lambda k: int(k['cp']),reverse=True ):
+			loc = Point(float(raw_p.get('lng')),float(raw_p.get('lat')))
+			# in_manhattan, distance = point_is_in_manhattan(loc)
+			pokemon=Pokemon(raw_p)
+			# in_manhattan, distance = point_is_in_manhattan(pokemon.loc)
+			# pokemon.is_in_manhattan=in_manhattan
+			# pokemon.distance=distance
 
-				if pokemon.hood in hoods_we_listen_for:
-					in_manhattan, distance = point_is_in_manhattan(pokemon.loc)
-					process_message_for_groupme(pokemon)
+			if pokemon.hood in hoods_we_listen_for:
+				in_manhattan, distance = point_is_in_manhattan(pokemon.loc)
+				process_message_for_groupme(pokemon)
+				old_data.append(raw_p)
 
 		sys.stdout.flush()
 		await asyncio.sleep(60)
