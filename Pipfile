@@ -7,7 +7,9 @@
 [packages]
 asyncio = '*'
 aiohttp = '*'
+brotlipy = '*'
 requests = '*'
+
 termcolor = '*'
 
 pymongo[srv,tls]=">=3.6.0"
@@ -15,4 +17,3 @@ dnspython = ">=1.15.0"
 
 shapely = "*"
 pyproj = "*"
-
