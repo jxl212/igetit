@@ -7,3 +7,5 @@ credentials.json
 localdev-config.json
 server/localdev-config.json
 .old/*
+.vscode
+__pycache__
