@@ -2,16 +2,17 @@ import sys
 import asyncio
 import aiohttp
 import time,datetime
-from shapely.geometry import  Point
+from shapely.geometry import Point
 from pokemon import Pokemon
 from pprint import pprint
 from utils import get_hoods_to_listen_for, process_message_for_groupme, point_is_in_manhattan,send_groupme
 from collections import Counter
 
 loop = asyncio.get_event_loop( )
-old_data=[]
+
 async def read_website(url):
 	print("starting")
+	old_data=[]
 	the_time=int(time.time()) #- 60*5 # seconds
 	mons=",".join([str(x) for x in range(1,386)])
 	headers = {'accept': '*/*',
@@ -34,7 +35,7 @@ async def read_website(url):
 				data = await response.json()
 				meta_data = data.get('meta') if data else None
 				pokemon_data = data.get('pokemons') if data else None
-			    the_time = meta_data.get('inserted') if meta_data else now
+				the_time = meta_data.get('inserted') if meta_data else now
 
 		# pokemons is list of all new data, remove entries if it's a duplicated (in old_data)
 		pokemons = [x for x in pokemon_data if x not in old_data] if pokemon_data else []
