@@ -80,7 +80,11 @@ def get_minIV_for(bot_id,pokemon_name,pokemon_lvl):
             if 'iv' in m.keys():
                 # iv should be between 0 and 100
                 iv=max(0,min(100,int(m['iv'])))
-    return iv
+            if 'distance' in m.keys():
+                d=m['distance']
+            else:
+                 d=None
+    return iv,d
 
 def get_hoods_to_listen_for():
     # mongodb_user=os.environ.get('MONGO_USER')
@@ -108,8 +112,10 @@ def process_message_for_groupme(pokemon):
         p2=Point(doc['loc']['lat'],doc['loc']['lng'])
         d=distance_between(p1,p2)
         dc.update({"d":[d]})
-        if d <= max_distance:
-            min_iv = get_minIV_for(doc['iSawIt_id'], pokemon.name, pokemon.level)
+        min_iv, distance = get_minIV_for(doc['iSawIt_id'], pokemon.name, pokemon.level)
+        if not distance: 
+            distance=max_distance
+        if d <= max_distance:            
             if type(min_iv) is int and \
                 (min_iv == 0 or (pokemon.iv >= min_iv)):
                 prefix="PASS"
