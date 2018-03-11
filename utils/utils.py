@@ -58,7 +58,7 @@ def send_groupme(bot_id,pokemon):
         print(f"ERROR: posting to groupme for {bot_id} {content} {loc}, {r.status_code}")
     return r
 
-def check_pokemon(bot_id, pokemon_name=None, pokemon_lvl=0, pokemon_iv=0, distance=2500, max_distance=2500):
+def get_minIV_distance_for(bot_id,pokemon_name,pokemon_lvl):
     # mongodb_user=os.environ.get('MONGO_USER')
     # mongodb_pass=os.environ.get('MONGO_PASS')
     # with MongoClient("mongodb+srv://{}:{}@cluster0-m6kv9.mongodb.net/nyc".format(mongodb_user,mongodb_pass)) as mongo_client:
@@ -66,18 +66,21 @@ def check_pokemon(bot_id, pokemon_name=None, pokemon_lvl=0, pokemon_iv=0, distan
     match=list(col.aggregate([
         { "$match" :{"name":pokemon_name}},
         {"$unwind": "$min_lvl_iv"} ,
-        {"$project":{"id":1,"name":1,
-        "lvl":"$min_lvl_iv.lvl",
-        "iv":"$min_lvl_iv.iv",
-        "distance": { "$ifNull": [ "$min_lvl_iv.distance", max_distance] }, }},
-        {"$match": {"$and": [
-            {"lvl":{"$lte":pokemon_lvl}},
-            {"iv":{"$lte":pokemon_iv}},
-            {"distance":{"$gte":distance}}
-        ]}},
+        {"$match":{"min_lvl_iv.lvl":{"$lte":pokemon_lvl}}},
+        {"$sort":{"min_lvl_iv.lvl":-1}},
         {"$limit":1}]))
-    
-    return len(match) > 0
+    iv=100
+    d=None
+    if match and len(match)>0:
+        m=match[0]
+        if "min_lvl_iv" in m.keys():
+            m=m['min_lvl_iv']
+            if 'iv' in m.keys():
+                # iv should be between 0 and 100
+                iv=max(0,min(100,int(m['iv'])))
+            if 'distance' in m.keys():
+                d=m['distance']
+    return iv,d
 
 def get_hoods_to_listen_for():
     # mongodb_user=os.environ.get('MONGO_USER')
@@ -89,21 +92,34 @@ def get_hoods_to_listen_for():
     return hoods
 
 def process_message_for_groupme(pokemon):
+    # mongodb_user=os.environ.get('MONGO_USER')
+    # mongodb_pass=os.environ.get('MONGO_PASS')
+    # with MongoClient("mongodb+srv://{}:{}@cluster0-m6kv9.mongodb.net/nyc".format(mongodb_user,mongodb_pass)) as mongo_client:
+    #   db = mongo_client.get_database()
+
     c=Counter({'FAIL':0,'PASS':0})
+    dc=Counter({'d':[]})
     for doc in db.iControlIt.find({"iSawIt_id":{"$exists":True}},{"iSawIt_id":True,"loc":True,"distance":True,"_id":False}):
+        # print("process_message_for_groupme {}".format(doc['iSawIt_id']))
+        # print(doc['iSawIt_id'], pokemon.name, pokemon.level)
         prefix="FAIL"
         max_distance=int(doc['distance'])
-        iSawIt_id=doc['iSawIt_id']
         p1=pokemon.loc
         p2=Point(doc['loc']['lat'],doc['loc']['lng'])
-        pokemon_distance=distance_between(p1,p2)
-        pokemon.distance=pokemon_distance
-        if check_pokemon(iSawIt_id, pokemon.name, pokemon.level, pokemon_distance, max_distance):
-            prefix="PASS"
-            send_groupme(iSawIt_id,pokemon)
+        d=distance_between(p1,p2)
+        dc.update({"d":[d]})
+        min_iv, distance = get_minIV_distance_for(doc['iSawIt_id'], pokemon.name, pokemon.level)
+        if not distance: 
+            distance=max_distance
+        if d <= max_distance:            
+            if type(min_iv) is int and \
+                (min_iv == 0 or (pokemon.iv >= min_iv)):
+                prefix="PASS"
+                bot_id=doc['iSawIt_id']
+                send_groupme(bot_id,pokemon)
         c.update({prefix})
     if c['PASS'] > 0:
-        print(f"{c['FAIL']}/{c['PASS']} {pokemon}")
+        print(f"{c['FAIL']}/{c['PASS']} {dc['d']} {pokemon}")
     
 
 nys = Proj(init='EPSG:32118')
@@ -123,6 +139,10 @@ def get_manhattan():
         manhattan_shape=shape(m['geometry'])
     return manhattan_shape
 
-def point_is_in_manhattan(point):
+def point_is_in_manhattan(point,refPoint=Point(40.84635921,-73.94062042)):
     s=get_manhattan()
-    return s.contains(point)
+    d=None
+    is_in_shape=s.contains(point)
+    if is_in_shape:
+        d=distance_between(point,refPoint)
+    return is_in_shape, d
