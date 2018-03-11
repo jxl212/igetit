@@ -4,8 +4,8 @@ import aiohttp
 import time,datetime
 from shapely.geometry import Point
 from pokemon import Pokemon
-from pprint import pprint
-from utils import get_hoods_to_listen_for, process_message_for_groupme, point_is_in_manhattan,send_groupme
+from pprint import pprint                   
+from utils.utils import get_hoods_to_listen_for, process_message_for_groupme, point_is_in_manhattan,send_groupme
 from collections import Counter
 
 loop = asyncio.get_event_loop( )
@@ -23,8 +23,8 @@ async def read_website(url):
 		'referer': 'https://nycpokemap.com/',
 		'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.140 Safari/537.36',
 		'x-requested-with': 'XMLHttpRequest'}
-	in_counter=Counter()
-	out_counter=Counter()
+
+
 	while True:
 		now=int(time.time())
 		# prune data for pokemoon that have despawned
@@ -39,22 +39,19 @@ async def read_website(url):
 
 		# pokemons is list of all new data, remove entries if it's a duplicated (in old_data)
 		pokemons = [x for x in pokemon_data if x not in old_data] if pokemon_data else []
-
-		hoods_we_listen_for = get_hoods_to_listen_for()
+		print(f"got {len(pokemons)} pokemons")
+		# hoods_we_listen_for = get_hoods_to_listen_for()
 
 		for raw_p in sorted(pokemons,key=lambda k: int(k['cp']),reverse=True ):
 			loc = Point(float(raw_p.get('lng')),float(raw_p.get('lat')))
-			# in_manhattan, distance = point_is_in_manhattan(loc)
-			pokemon=Pokemon(raw_p)
-			# in_manhattan, distance = point_is_in_manhattan(pokemon.loc)
-			# pokemon.is_in_manhattan=in_manhattan
-			# pokemon.distance=distance
-
-			if pokemon.hood in hoods_we_listen_for:
-				in_manhattan, distance = point_is_in_manhattan(pokemon.loc)
+			in_manhattan = point_is_in_manhattan(loc)
+			if  in_manhattan:
+				# print("in manhattan")
+				pokemon=Pokemon(raw_p)
+			
 				process_message_for_groupme(pokemon)
 				old_data.append(raw_p)
-
+		print("...")
 		sys.stdout.flush()
 		await asyncio.sleep(60)
 

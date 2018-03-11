@@ -4,7 +4,7 @@ import datetime, time, re
 from shapely.geometry import shape, Point
 from pymongo import MongoClient
 from termcolor import colored
-from utils import point_is_in_manhattan
+from utils.utils import point_is_in_manhattan
 
 pokemons_id2name=[]
 geometries=[]
@@ -93,7 +93,7 @@ class Pokemon:
 		self.name=pokemons_id2name[self.pokemon_id]
 		self.loc = Point(self.lng,self.lat)
 		self.hood=get_neighborhood_from(self.loc)
-		self.is_in_manhattan, self.distance = point_is_in_manhattan(self.loc)
+		self.is_in_manhattan = point_is_in_manhattan(self.loc)
 
 	@property
 	def weatherString(self):
@@ -140,7 +140,6 @@ class Pokemon:
 		txt+=f" gender:{self.gender: <4}" if self.gender != "" else ""
 		txt+=" {:10.10}".format(self.moveSet)
 		txt+=" {:10.10}".format(self.hood)
-		txt+=f" {self.distance:>6.2f}m" if self.distance != None else ""
 		txt+=" "+colored("{:<15}".format(self.weatherString), "blue" if self.weather not in [None,"None",""] else None)
 		txt+=" {}".format(self.nycpokemap_url)
 		if self.iv > 90 and self.attack == 15 and self.level > 30:
