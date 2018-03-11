@@ -70,6 +70,7 @@ def get_minIV_for(bot_id,pokemon_name,pokemon_lvl):
         {"$sort":{"min_lvl_iv.lvl":-1}},
         {"$limit":1}]))
     iv=100
+    d=None
     if match and len(match)>0:
         m=match[0]
         if "min_lvl_iv" in m.keys():
@@ -79,8 +80,6 @@ def get_minIV_for(bot_id,pokemon_name,pokemon_lvl):
                 iv=max(0,min(100,int(m['iv'])))
             if 'distance' in m.keys():
                 d=m['distance']
-            else:
-                 d=None
     return iv,d
 
 def get_hoods_to_listen_for():
