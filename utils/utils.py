@@ -97,7 +97,7 @@ def process_message_for_groupme(pokemon):
         p1=pokemon.loc
         p2=Point(doc['loc']['lat'],doc['loc']['lng'])
         pokemon_distance=distance_between(p1,p2)
-        pokemon['distance']=pokemon_distance
+        pokemon.distance=pokemon_distance
         if check_pokemon(iSawIt_id, pokemon.name, pokemon.level, pokemon_distance, max_distance):
             prefix="PASS"
             send_groupme(iSawIt_id,pokemon)
