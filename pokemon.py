@@ -93,7 +93,7 @@ class Pokemon:
 		self.name=pokemons_id2name[self.pokemon_id]
 		self.loc = Point(self.lng,self.lat)
 		self.hood=get_neighborhood_from(self.loc)
-		self.is_in_manhattan = point_is_in_manhattan(self.loc)
+
 
 	@property
 	def weatherString(self):

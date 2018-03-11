@@ -39,7 +39,7 @@ async def read_website(url):
 
 		# pokemons is list of all new data, remove entries if it's a duplicated (in old_data)
 		pokemons = [x for x in pokemon_data if x not in old_data] if pokemon_data else []
-		print(f"got {len(pokemons)} pokemons")
+
 		# hoods_we_listen_for = get_hoods_to_listen_for()
 
 		for raw_p in sorted(pokemons,key=lambda k: int(k['cp']),reverse=True ):
@@ -51,8 +51,7 @@ async def read_website(url):
 			
 				process_message_for_groupme(pokemon)
 				old_data.append(raw_p)
-		print("...")
-		sys.stdout.flush()
+		
 		await asyncio.sleep(60)
 
 try:

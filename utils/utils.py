@@ -123,10 +123,6 @@ def get_manhattan():
         manhattan_shape=shape(m['geometry'])
     return manhattan_shape
 
-def point_is_in_manhattan(point,refPoint=Point(40.84635921,-73.94062042)):
+def point_is_in_manhattan(point):
     s=get_manhattan()
-    d=None
-    is_in_shape=s.contains(point)
-    if is_in_shape:
-        d=distance_between(point,refPoint)
-    return is_in_shape, d
+    return s.contains(point)
