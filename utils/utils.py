@@ -14,8 +14,6 @@ mongo_client = MongoClient("mongodb+srv://{}:{}@cluster0-m6kv9.mongodb.net/nyc".
 db = mongo_client.get_database()
 
 def post_groupme(bot_id,content,attachments=None):
-    return 
-
     """ post and message (content) to GroupMe from bot_id
     Arguments:
     ----------
@@ -41,7 +39,7 @@ def post_groupme(bot_id,content,attachments=None):
         payload["attachments"]: attachments
 
     r = requests.post(url, json=payload)
-    if r is None or not r.ok:
+    if r == None or r.ok == False:
         print(f"ERROR: posting to groupme for {bot_id} {content}, {attachments}, {r.status_code}")
     return r
 
