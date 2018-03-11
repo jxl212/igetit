@@ -13,7 +13,7 @@ mongodb_pass=os.environ.get('MONGO_PASS')
 mongo_client = MongoClient("mongodb+srv://{}:{}@cluster0-m6kv9.mongodb.net/nyc".format(mongodb_user,mongodb_pass))
 db = mongo_client.get_database()
 
-def post_groupme(bot_id,content,attachments=None):
+def post_groupme(bot_id,content,attachments=[]):
     """ post and message (content) to GroupMe from bot_id
     Arguments:
     ----------
@@ -25,18 +25,15 @@ def post_groupme(bot_id,content,attachments=None):
         for attaching a location:
         attachments = [{
             "type": "location",
-            "lat": "0.00",
-            "lng": "0.00",
+            "lat": 0.00,
+            "lng": 0.00,
             "name": "home"
         }]
     """
 
     url="https://api.groupme.com/v3/bots/post"
 
-    payload={"bot_id":bot_id, "text":content}
-
-    if attachments:
-        payload["attachments"]: attachments
+    payload={"bot_id":bot_id, "text":content, "attachments": attachments}
 
     r = requests.post(url, json=payload)
     if r == None or r.ok == False:
@@ -51,9 +48,9 @@ def send_groupme(bot_id,pokemon):
     content = pokemon.format_for_groupme()
     loc =  [{
         "type": "location",
-        "lat": f"{pokemon.lat}",
-        "lng": f"{pokemon.lng}",
-        "name": f"{pokemon.hood}"
+        "lat": pokemon.lat,
+        "lng": pokemon.lng,
+        "name": pokemon.hood if pokemon.hood else ""
       }]
     # payload={"bot_id":bot_id, "text":content, "attachments": loc}
     r = post_groupme(bot_id,content,loc)
