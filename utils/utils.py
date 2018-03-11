@@ -58,7 +58,7 @@ def send_groupme(bot_id,pokemon):
         print(f"ERROR: posting to groupme for {bot_id} {content} {loc}, {r.status_code}")
     return r
 
-def get_minIV_for(bot_id,pokemon_name,pokemon_lvl):
+def get_minIV_distance_for(bot_id,pokemon_name,pokemon_lvl):
     # mongodb_user=os.environ.get('MONGO_USER')
     # mongodb_pass=os.environ.get('MONGO_PASS')
     # with MongoClient("mongodb+srv://{}:{}@cluster0-m6kv9.mongodb.net/nyc".format(mongodb_user,mongodb_pass)) as mongo_client:
@@ -108,7 +108,7 @@ def process_message_for_groupme(pokemon):
         p2=Point(doc['loc']['lat'],doc['loc']['lng'])
         d=distance_between(p1,p2)
         dc.update({"d":[d]})
-        min_iv, distance = get_minIV_for(doc['iSawIt_id'], pokemon.name, pokemon.level)
+        min_iv, distance = get_minIV_distance_for(doc['iSawIt_id'], pokemon.name, pokemon.level)
         if not distance: 
             distance=max_distance
         if d <= max_distance:            
