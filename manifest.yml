@@ -6,6 +6,7 @@ applications:
   command: python app.py
   memory: 256M
   domain: mybluemix.net
+  no-route: true
   host: igetit
   health-check-type: process
   env:

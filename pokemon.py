@@ -30,6 +30,7 @@ def get_manhattan():
 		m=json.load(file)
 		manhattan_shape=shape(m['geometry'])
 	return manhattan_shape
+manhattan_shape=get_manhattan()
 
 def get_geom():
 	global geometries
@@ -47,7 +48,7 @@ def get_geom():
 			s=shape(hood)
 			geometries.append({"name":hood['_id'],"shape":s})
 	return geometries
-
+geometries=get_geom()
 def get_neighborhood_from(point):
 	for shape_dic in get_geom():
 		s=shape_dic['shape']
@@ -131,7 +132,8 @@ class Pokemon:
 
 		txt+=" "+colored("({: >2}/{: >2}/{: >2})".format(self.attack,self.defence,self.stamina), color=txt_color,attrs=txt_attrs)
 		txt+=" "+colored("L{}".format(self.level).ljust(3),color=txt_color,attrs=['bold'] if self.level > 30 else [])
-
+		if self.distance :
+			txt+=" {:10.2f}".format(self.distance)
 		time_now = int(time.time())
 		seconds_left=int(self.despawn)-time_now
 		until=datetime.datetime.fromtimestamp(int(self.despawn)).strftime('%H:%M:%S')
@@ -140,7 +142,8 @@ class Pokemon:
 
 		txt+=f" gender:{self.gender: <4}" if self.gender != "" else ""
 		txt+=" {:10.10}".format(self.moveSet)
-		txt+=" {:10.10}".format(self.hood)
+		txt+=" {:20.20}".format(self.hood)
+		
 		txt+=" "+colored("{:<15}".format(self.weatherString), "blue" if self.weather not in [None,"None",""] else None)
 		txt+=" {}".format(self.nycpokemap_url)
 		if self.iv > 90 and self.attack == 15 and self.level > 30:
