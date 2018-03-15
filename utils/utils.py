@@ -201,7 +201,7 @@ def process_one(control_info,requirements,raw_p):
             p=pokemon.Pokemon(raw_p)
             p.distance=int(pokemon_distance)
             send_groupme(control_info['iSawIt_id'],p)
-            logger.info(p)
+            print(p)
             return
             
 def process_pokemons(control_info,requirements,pokemon_raw):

@@ -9,7 +9,7 @@ from utils.utils import process_pokemons, point_is_in_manhattan
 from concurrent.futures import ThreadPoolExecutor
 import requests
 import logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.ERROR)
 
 logger=logging.getLogger()
 
