@@ -63,9 +63,9 @@ def main():
         now=time.time()
         polling_interval=60.0
         old_data=[]
-        the_time=int(now-polling_interval)
-        last_query_ts=now-polling_interval
-        now_pre_query=now-polling_interval
+        the_time=int(now)
+        last_query_ts=now
+        now_pre_query=now
         
         while True:
             try:
