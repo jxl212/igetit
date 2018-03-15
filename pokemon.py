@@ -3,7 +3,7 @@ import json
 import datetime, time, re
 from shapely.geometry import shape, Point
 from pymongo import MongoClient
-from termcolor import colored
+# from termcolor import colored
 
 
 pokemons_id2name=[]
@@ -95,6 +95,8 @@ class Pokemon:
 		self.loc = Point(self.lng,self.lat)
 		self.hood=get_neighborhood_from(self.loc)
 		self.distance=None
+		if "distance" in data.keys():
+			self.distance=int(data['distance'])
 
 
 	@property
@@ -118,38 +120,42 @@ class Pokemon:
 		return ""
 
 	def __str__(self):
-		txt_color=None
-		if self.cp < 0:
-			txt_color="white"
+		# txt_color=None
+		# if self.cp < 0:
+		# 	txt_color="white"
 
-		txt=colored("{: <10s} (CP: {:5d})".format(self.name,self.cp).ljust(20), color=txt_color,attrs=['bold'] if self.iv > 90 and self.attack==15 else []).rjust(15)
+		# txt=colored("{: <10s} (CP: {:5d})".format(self.name,self.cp).ljust(20), color=txt_color,attrs=['bold'] if self.iv > 90 and self.attack==15 else []).rjust(15)
+		txt=f"{self.name: <10s} (CP: {self.cp:5})".ljust(20)
 
-		txt+=" "+colored("{}%".format(self.iv).rjust(5), color=txt_color,attrs=['bold'] if self.iv > 90 else [])
+		# txt+=" "+colored("{}%".format(self.iv).rjust(5), color=txt_color,attrs=['bold'] if self.iv > 90 else [])
+		txt+="{}%".format(self.iv).rjust(5)
+		# txt_attrs = []
+		# if self.attack == 15:
+		# 	txt_attrs=['bold']
 
-		txt_attrs = []
-		if self.attack == 15:
-			txt_attrs=['bold']
-
-		txt+=" "+colored("({: >2}/{: >2}/{: >2})".format(self.attack,self.defence,self.stamina), color=txt_color,attrs=txt_attrs)
-		txt+=" "+colored("L{}".format(self.level).ljust(3),color=txt_color,attrs=['bold'] if self.level > 30 else [])
+		# txt+=" "+colored("({: >2}/{: >2}/{: >2})".format(self.attack,self.defence,self.stamina), color=txt_color,attrs=txt_attrs)
+		txt+="({: >2}/{: >2}/{: >2})".format(self.attack,self.defence,self.stamina)
+		# txt+=" "+colored(" L{}".format(self.level).ljust(3),color=txt_color,attrs=['bold'] if self.level > 30 else [])
+		txt+=" L{}".format(self.level).ljust(3)
 		if self.distance :
-			txt+=" {:10.2f}".format(self.distance)
+			txt+=" {:10}".format(self.distance)
 		time_now = int(time.time())
 		seconds_left=int(self.despawn)-time_now
 		until=datetime.datetime.fromtimestamp(int(self.despawn)).strftime('%H:%M:%S')
 		time_left="{:2d}:{:02d}".format(seconds_left//60,seconds_left % 60)
 		txt+= f" Until: {until} ({time_left})"
 
-		txt+=f" gender:{self.gender: <4}" if self.gender != "" else ""
+		# txt+=f" gender:{self.gender: <4}" if self.gender != "" else ""
 		txt+=" {:10.10}".format(self.moveSet)
 		txt+=" {:20.20}".format(self.hood)
 		
-		txt+=" "+colored("{:<15}".format(self.weatherString), "blue" if self.weather not in [None,"None",""] else None)
+		# txt+=" "+colored("{:<15}".format(self.weatherString), "blue" if self.weather not in [None,"None",""] else None)
 		txt+=" {}".format(self.nycpokemap_url)
-		if self.iv > 90 and self.attack == 15 and self.level > 30:
-			txt = colored(re.sub(r"\x1b\[\d+m","",txt),"yellow",attrs=['bold','reverse'])
-		elif self.iv == 100:
-			txt = colored(re.sub(r"\x1b\[\d+m","",txt),"green",attrs=['bold','reverse'])
+		# if self.iv > 90 and self.attack == 15 and self.level > 30:
+		# 	txt = colored(re.sub(r"\x1b\[\d+m","",txt),"yellow",attrs=['bold','reverse'])
+		# elif self.iv == 100:
+		# 	txt = colored(re.sub(r"\x1b\[\d+m","",txt),"green",attrs=['bold','reverse'])
+		# txt=re.sub(r"\x1b\[\d+m","",txt)
 		return txt
 
 	def format_for_groupme(self):

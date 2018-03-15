@@ -102,7 +102,7 @@ def main():
                 logger.info("interrupted")
                 break
             except Exception as e:
-                logger.error(f"error:{e}")
+                logger.error(e)
                 pass
 
 if __name__ == "__main__":

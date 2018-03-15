@@ -8,9 +8,9 @@ from pyproj import Proj
 from shapely.geometry import shape, Point
 import requests
 import pokemon
-
-import logging
 import threading
+import logging
+
 logger = logging.getLogger()
 
 mongodb_user=os.environ.get('MONGO_USER')
@@ -54,10 +54,8 @@ def send_groupme(bot_id,pokemon):
         "name": pokemon.hood if pokemon.hood else ""
       }]
     # payload={"bot_id":bot_id, "text":content, "attachments": loc}
-    r = post_groupme(bot_id,content,loc)
-    if not r.ok:
-        logger.error(f"failed posting to groupme for {bot_id} {content} {loc}, {r.status_code}")
-    return r
+    return post_groupme(bot_id,content,loc)
+    
 
 # def check_pokemon(bot_id, pokemon_id=0, pokemon_lvl=0, pokemon_iv=0, distance=2500, max_distance=2500):
 #     resutls=[]
@@ -200,9 +198,10 @@ def process_one(control_info,requirements,raw_p):
                 logger.debug(f"distance: {distance_req} > {pokemon_distance}")
                 continue
             # pokemon checks out
-            p=pokemon.Pokemon(raw_p)    
+            p=pokemon.Pokemon(raw_p)
+            p.distance=int(pokemon_distance)
             send_groupme(control_info['iSawIt_id'],p)
-            logger.info(f"{int(pokemon_distance):4d} - {p}")
+            logger.info(p)
             return
             
 def process_pokemons(control_info,requirements,pokemon_raw):
