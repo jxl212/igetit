@@ -9,3 +9,4 @@ server/localdev-config.json
 .old/*
 .vscode
 __pycache__
+.env

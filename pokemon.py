@@ -4,7 +4,7 @@ import datetime, time, re
 from shapely.geometry import shape, Point
 from pymongo import MongoClient
 from termcolor import colored
-from utils.utils import point_is_in_manhattan
+
 
 pokemons_id2name=[]
 geometries=[]
@@ -171,5 +171,4 @@ class Pokemon:
 		# https://nycpokemap.com#40.85207264,-73.94016119
 		txt.append(self.nycpokemap_url)
 		return "\n".join(txt)
-# pokemon=Pokemon(p)
-# print(str(pokemon))
+
