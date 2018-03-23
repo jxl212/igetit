@@ -5,7 +5,8 @@ import time
 import datetime
 from shapely.geometry import Point
 from pymongo import MongoClient
-from utils.utils import process_pokemons, point_is_in_manhattan
+from utils.utils import  point_is_in_manhattan
+from common.process_data import process_pokemons
 from concurrent.futures import ThreadPoolExecutor
 import requests
 import logging
