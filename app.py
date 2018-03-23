@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.ERROR)
 
 logger=logging.getLogger()
 
-def read_website(session,the_time=0,old_data=[]):
+def read_website(session=requests.Session(),the_time=0,old_data=[]):
     logger.debug(read_website.__name__)
     mons=",".join([str(x) for x in range(1,386)])
     now=int(time.time())
@@ -28,14 +28,17 @@ def read_website(session,the_time=0,old_data=[]):
     meta_data = data.get('meta') if data else None
     pokemon_data = data.get('pokemons') if data else None
     the_time = meta_data.get('inserted') if meta_data else int(time.time())
-    logger.debug(f"===got {len(pokemon_data)}===")
+    if type(data) == type([]):
+        logger.debug(f"===got {len(pokemon_data)}===")
+    else:
+        logger.error(f"got unexpected data format of type {type(data)}")
    
     # pokemons is list of all new data, remove entries if it's a duplicated (in old_data)
     pokemons_all = [x for x in pokemon_data if x not in old_data] if pokemon_data else []
     
 
-    pokemons = [x for x in pokemons_all if point_is_in_manhattan(Point(float(x.get('lng')),float(x.get('lat'))))]
-    pokemons=sorted(pokemons,key=lambda k: (int(k['attack']),int(k['stamina']),int(k['defence']),int(k['level'])), reverse=True )
+    pokemons = [x for x in pokemons_all if point_is_in_manhattan(float(x.get('lng')),float(x.get('lat')))]
+    pokemons=sorted(pokemons,key=lambda k: (int(k['attack']),int(k['stamina']),int(k['defense']),int(k['level'])), reverse=True )
     return the_time, pokemons, old_data
 
 
@@ -91,7 +94,7 @@ def main():
                 #pull pokemon settings for all users
                 botid_to_collections={x['iSawIt_id'] : {'control':x,'pokemon_data': list(db.get_collection(f"iSawIt_{x['iSawIt_id'] }").find({}).sort("_id"))} for x  in control_data}                
                 # for each user, process the data 
-                with  ThreadPoolExecutor(max_workers=len(control_data))  as executor: 
+                with  ThreadPoolExecutor(max_workers=max(2,len(control_data)))  as executor: 
                     for info_dict in botid_to_collections.values():
                         control_info=info_dict['control']
                         requirements=info_dict['pokemon_data']

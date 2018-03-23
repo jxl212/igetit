@@ -3,20 +3,17 @@ import os, time,json
 from pymongo import MongoClient
 from termcolor import cprint, colored
 import pprint
+from itertools import filterfalse
 from collections import Counter, defaultdict
 from pyproj import Proj
 from shapely.geometry import shape, Point
-import requests
+from common.fetcher import load_url 
 import pokemon
 import threading
-import logging
+from . import logger
+from . import db, mongo_client, mongodb_pass, mongodb_user
 
-logger = logging.getLogger()
 
-mongodb_user=os.environ.get('MONGO_USER')
-mongodb_pass=os.environ.get('MONGO_PASS')
-mongo_client = MongoClient("mongodb+srv://{}:{}@cluster0-m6kv9.mongodb.net/nyc".format(mongodb_user,mongodb_pass))
-db = mongo_client.get_database()
 
 def post_groupme(bot_id,content,attachments=[]):
     """ post and message (content) to GroupMe from bot_id
@@ -40,11 +37,11 @@ def post_groupme(bot_id,content,attachments=[]):
 
     payload={"bot_id":bot_id, "text":content, "attachments": attachments}
 
-    r = requests.post(url, json=payload)
-    if r == None or r.ok == False:
-        logger.error(f"failed posting to groupme for {bot_id} {content}, {attachments}, {r.status_code}")
-    return r
-
+    # r = requests.post(url, json=payload)
+    #POST request
+    load_url(url,params=payload)
+   
+   
 def send_groupme(bot_id,pokemon):
     content = pokemon.format_for_groupme()
     loc =  [{
@@ -128,7 +125,7 @@ def send_groupme(bot_id,pokemon):
 #         is_good=check_pokemon(iSawIt_id, 
 #             pokemon_id=int(raw_p.get('pokemon_id')), 
 #             pokemon_lvl=int(raw_p.get('level')),
-#             pokemon_iv=round((int(raw_p.get('attack'))+int(raw_p.get('stamina'))+int(raw_p.get('defence')) * 100)/(3*15)),
+#             pokemon_iv=round((int(raw_p.get('attack'))+int(raw_p.get('stamina'))+int(raw_p.get('defense')) * 100)/(3*15)),
 #             distance=int(pokemon_distance),
 #             max_distance=int(max_distance))
 
@@ -161,53 +158,12 @@ def get_manhattan():
         manhattan_shape=shape(m['geometry'])
     return manhattan_shape
 
-def point_is_in_manhattan(point):
+def point_is_in_manhattan(point):    
     s=get_manhattan()
     is_in_shape=s.contains(point)
     return is_in_shape
 
 
-def process_one(control_info,requirements,raw_p):
-    p1=Point(float(raw_p.get('lng')),float(raw_p.get('lat')))
-    p2=control_info['ref_loc']
-    
-    pokemon_distance=distance_between(p1,p2)
-    pokemon_id=int(raw_p['pokemon_id'])
-    pokemon_lvl=int(raw_p['level'])
-    pokemon_iv=-1
-    if pokemon_lvl > -1:
-        attack=int(raw_p['attack'])
-        stamina=int(raw_p['stamina'])
-        defence=int(raw_p['defence'])
-        pokemon_iv= (attack+defence+stamina) / (3*15)
-        pokemon_iv=round(pokemon_iv*100)
 
-    pokemon_reqs = [p_req for p_req in requirements if p_req["_id"] == pokemon_id ]
-    for pokemon_req in pokemon_reqs: 
-        for min_req in pokemon_req['min_lvl_iv']:
-            lvl_req      = min_req['lvl']
-            if lvl_req > pokemon_lvl: 
-                logger.debug(f"lvl: {lvl_req} > {pokemon_lvl}")
-                continue
-            iv_req       = min_req['iv']
-            if iv_req > pokemon_iv: 
-                logger.debug(f"iv: {iv_req} > {pokemon_iv}")
-                continue
-            distance_req = min_req.get('distance') if min_req.get('distance') else int(control_info['distance'])
-            if distance_req < pokemon_distance: 
-                logger.debug(f"distance: {distance_req} > {pokemon_distance}")
-                continue
-            # pokemon checks out
-            p=pokemon.Pokemon(raw_p)
-            p.distance=int(pokemon_distance)
-            send_groupme(control_info['iSawIt_id'],p)
-            print(p)
-            return
-            
-def process_pokemons(control_info,requirements,pokemon_raw):
-    logger.debug(f"[{threading.get_ident()}]: processing {len(pokemon_raw)}")
-    control_info.update({"ref_loc":Point(control_info['loc']['lng'],control_info['loc']['lat'])})
-    for raw_p in pokemon_raw:
-        process_one(control_info,requirements,raw_p)
         
             

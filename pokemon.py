@@ -1,10 +1,16 @@
 import os
 import json
 import datetime, time, re
-from shapely.geometry import shape, Point
-from pymongo import MongoClient
-# from termcolor import colored
 
+from utils import db
+from utils.utils import shape, Point, distance_between, point_is_in_manhattan
+from utils.cached_property import cached_property
+# from termcolor import colored
+import logging
+
+logger = logging.getLogger(__name__)
+
+logger.info("LOADING, PLEASE WAIT....")
 
 pokemons_id2name=[]
 geometries=[]
@@ -37,17 +43,15 @@ def get_geom():
 	if geometries != []: return geometries
 
 	geometries.clear()
-	mongodb_user=os.environ.get('MONGO_USER')
-	mongodb_pass=os.environ.get('MONGO_PASS')
-	with MongoClient("mongodb+srv://{}:{}@cluster0-m6kv9.mongodb.net/nyc".format(mongodb_user,mongodb_pass)) as mongo_client:
-		db = mongo_client.get_database()
-		hoods = [x for x in db.neighborhoods.aggregate([
-				{"$addFields":{"_id":"$name2","propreties.name":"$name2","coordinates":"$geometry.coordinates","type":"$geometry.type"}},
-				{"$project":{"_id":1,"coordinates":1,"type":1,"propreties":1}}])]
-		for hood in hoods:
-			s=shape(hood)
-			geometries.append({"name":hood['_id'],"shape":s})
+	# with MongoClient("mongodb+srv://{}:{}@cluster0-m6kv9.mongodb.net/nyc".format(mongodb_user,mongodb_pass)) as mongo_client:
+	hoods = [x for x in db.neighborhoods.aggregate([
+			{"$addFields":{"_id":"$name2","propreties.name":"$name2","coordinates":"$geometry.coordinates","type":"$geometry.type"}},
+			{"$project":{"_id":1,"coordinates":1,"type":1,"propreties":1}}])]
+	for hood in hoods:
+		s=shape(hood)
+		geometries.append({"name":hood['_id'],"shape":s})
 	return geometries
+
 geometries=get_geom()
 def get_neighborhood_from(point):
 	for shape_dic in get_geom():
@@ -70,54 +74,93 @@ class Pokemon:
 	def __init__(self,data):
 		if data is None or data == {}:
 			return
-		self.pokemon_id = int(data.get('pokemon_id'))
-		self.lat = float(data.get('lat'))
-		self.lng = float(data.get('lng'))
-		self.level = int(data.get('level'))
-		self.cp = int(data.get('cp'))
-		self.costume = int(data.get('costume'))
-		self.shiny = int(data.get('shiny'))
-		self.costume = int(data.get('costume'))
-		self.gender = ""
-		if int(data.get('gender')) == "1":
-			self.gender = "Male"
-		elif int(data.get('gender')) == '2':
-			self.gender = "Female"
-		self.attack = int(data.get('attack'))
-		self.move1 = movesDict.get(data.get('move1')) if data.get('move1') != None else ""
-		self.move2 = movesDict.get(data.get('move2')) if data.get('move2') != None else ""
-		self.stamina = int(data.get('stamina'))
-		self.defence = int(data.get('defence'))
-		self.weather = int(data.get('weather'))
-		self.despawn = int(data.get('despawn'))
-		self.nycpokemap_url=f"https://nycpokemap.com/#{self.lat},{self.lng}"
-		self.name=pokemons_id2name[self.pokemon_id]
-		self.loc = Point(self.lng,self.lat)
-		self.hood=get_neighborhood_from(self.loc)
-		self.distance=None
-		if "distance" in data.keys():
-			self.distance=int(data['distance'])
-
-
-	@property
-	def weatherString(self):
-		if self.weather in range(len(weatherStringDic)):
-			return weatherStringDic[self.weather]
+		
+		self.pokemon_id=None
+		self.lat = None
+		self.lng = None
+		self.level = None
+		self.cp = None
+		self._gender = None
+			
+		self.attack = None
+		self.stamina = None
+		self.defense = None
+		self._move1=None
+		self._move2=None
+		self._loc=None
+		self._weather = None
+		self._despawn = None
+		
+		self._name=None
+		self._hood=None
+		self._ref_locs={}
+		
+	
+	
+	def distance_form(self,ref_loc):
+		if ref_loc not in self._ref_locs:
+			self._ref_locs[ref_loc]=distance_between(self.loc,ref_loc)
+		self.distance=self._ref_locs[ref_loc]	
+		return self.distance
+		
+	
+	@cached_property
+	def despawn(self):
+		return self._despawn
+	
+		
+	@cached_property
+	def name(self):
+		if not self._name :
+			self._name=pokemons_id2name[int(self.pokemon_id) if self.pokemon_id else 0]
+		return self._name
+	@cached_property
+	def hood(self):
+		if not self._hood:
+			self._hood = get_neighborhood_from(self.loc)
+		return self._hood
+	@cached_property
+	def loc(self):
+		if not self._loc: 
+			self._loc=Point(self.lng,self.lat)
+		return self._loc
+	@cached_property
+	def move1(self):
+		return movesDict.get(self._move1)
+	@cached_property
+	def move2(self):
+		return movesDict.get(self._move2)
+	@cached_property
+	def gender(self):
+		if int(self._gender) == 0:
+			return  "Female"
+		elif int(self._gender) == 1:
+			return  "Male"
+		return "None"
+		
+	@cached_property
+	def weather(self):
+		if self._weather and self._weather in range(len(weatherStringDic)):
+			return weatherStringDic[int(self._weather)]
 		return ""
 
-	@property
+	@cached_property
 	def iv(self):
-		theSum = self.attack + self.defence + self.stamina
+		theSum = self.attack + self.defense + self.stamina
 		if theSum < 0:
 			return -1
-		theIV = theSum * 100 / (3*15)
+		theIV = theSum / 0.45
 		return round(theIV)
 
-	@property
+	@cached_property
 	def moveSet(self):
 		if self.move1 != "":
-			return f"{self.move1} | {self.move2}"
+			return f"{self._move1} | {self._move2}"
 		return ""
+
+	@cached_property
+	def map_url(self):
+		return f"https://nycpokemap.com/#{self.lat},{self.lng}"
 
 	def __str__(self):
 		# txt_color=None
@@ -133,8 +176,8 @@ class Pokemon:
 		# if self.attack == 15:
 		# 	txt_attrs=['bold']
 
-		# txt+=" "+colored("({: >2}/{: >2}/{: >2})".format(self.attack,self.defence,self.stamina), color=txt_color,attrs=txt_attrs)
-		txt+="({: >2}/{: >2}/{: >2})".format(self.attack,self.defence,self.stamina)
+		# txt+=" "+colored("({: >2}/{: >2}/{: >2})".format(self.attack,self.defense,self.stamina), color=txt_color,attrs=txt_attrs)
+		txt+="({: >2}/{: >2}/{: >2})".format(self.attack,self.defense,self.stamina)
 		# txt+=" "+colored(" L{}".format(self.level).ljust(3),color=txt_color,attrs=['bold'] if self.level > 30 else [])
 		txt+=" L{}".format(self.level).ljust(3)
 		if self.distance :
@@ -150,7 +193,7 @@ class Pokemon:
 		txt+=" {:20.20}".format(self.hood)
 		
 		# txt+=" "+colored("{:<15}".format(self.weatherString), "blue" if self.weather not in [None,"None",""] else None)
-		txt+=" {}".format(self.nycpokemap_url)
+		txt+=" {}".format(self.map_url)
 		# if self.iv > 90 and self.attack == 15 and self.level > 30:
 		# 	txt = colored(re.sub(r"\x1b\[\d+m","",txt),"yellow",attrs=['bold','reverse'])
 		# elif self.iv == 100:
@@ -160,7 +203,7 @@ class Pokemon:
 
 	def format_for_groupme(self):
 		txt=[]
-		txt.append(f"{self.name} {self.iv}% ({self.attack:02d}-{self.defence:02d}-{self.stamina:02d}) - Level: {self.level} - (CP: {self.cp})")
+		txt.append(f"{self.name} {self.iv}% ({self.attack:02d}-{self.defense:02d}-{self.stamina:02d}) - Level: {self.level} - (CP: {self.cp})")
 		# Kadabra (95%) - (CP: 1583) - (Level: 30)
 		# Until: 09:37:34PM (29:31 left)
 		time_now = int(time.time())
@@ -169,12 +212,49 @@ class Pokemon:
 		time_left="{:2d}:{:02d}".format(seconds_left//60,seconds_left % 60)
 		txt.append( f"Until: {until} ({time_left})")
 		# Weather boosted: None
-		txt.append(f"Weather boosted: {self.weatherString} ")
+		txt.append(f"Weather boosted: {self.weather} ")
 		# IV: 15 - 13 - 15 (95%)
-		txt.append(f"Attack: {self.attack:02d} - Defence: {self.defence:02d} - HP: {self.stamina:02d}")
+		txt.append(f"Attack: {self.attack:02d} - defense: {self.defense:02d} - HP: {self.stamina:02d}")
 		# Moveset: Confusion - Shadow Ball
 		txt.append(f"Moveset: {self.moveSet}")
 		# https://nycpokemap.com#40.85207264,-73.94016119
-		txt.append(self.nycpokemap_url)
+		txt.append(self.map_url)
 		return "\n".join(txt)
 
+
+class PoGoAlertPokemon(Pokemon):
+	def __init__(self,data):
+		Pokemon.__init__(self,data)
+		self.pokemon_id = int(data.get('pokemon_id'))
+		self.lat = float(data.get('latitude'))
+		self.lng = float(data.get('longitude'))
+		self.level = int(data.get('level'))
+		self.cp = int(data.get('cp'))
+			
+		self.attack = int(data.get('individual_attack')) 
+		self.stamina = int(data.get('individual_stamina')) 
+		self.defense = int(data.get('individual_defense')) 
+		self._move1=data.get('move_1')
+		self._move2=data.get('move_2')
+		self._weather = int(data.get('weather_boosted_condition')) 
+		self._despawn = data.get('disappear_time') // 1000
+		
+		self._name=data['pokemon_name']
+		self._hood=None
+		self._in_manhattan=None
+		self.distance=None
+		if "distance" in data.keys():
+			self.distance=int(data['distance'])
+
+		self.encounter_id=int(data['encounter_id'])
+		self.default_map_zoom=18
+	
+	@cached_property
+	def map_url(self):
+		url=f"https://ny-metro.pogoalerts.net/?lat={self.lat}&lon={self.lng}&encId={self.encounter_id}&zoom={self.default_map_zoom}"
+		return url
+	@cached_property
+	def is_in_manhattan(self):
+		if not self._in_manhattan:
+			self._in_manhattan = point_is_in_manhattan(self.loc)
+		return self._in_manhattan

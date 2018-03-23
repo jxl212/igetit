@@ -1,4 +1,4 @@
-pymongo[srv,tls]>=3.6.0
+pymongo[srv,tls]>=3.4.0
 dnspython>=1.15.0
 
 asyncio
