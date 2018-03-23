@@ -64,14 +64,6 @@ def get_data_once_and_print():
     # s=requests.Session()
     url="http://nycpokemap.com/query2.php"
 
-    headers = {'accept': '*/*',
-                'accept-encoding': 'gzip,deflate,br',
-                'accept-language': 'en-US,en;q=0.9',
-                'authority': 'nycpokemap.com',
-                'dnt': '1',
-                'referer': 'https://nycpokemap.com/',
-                'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.140 Safari/537.36',
-                'x-requested-with': 'XMLHttpRequest'}
         
     raw_pokemon_data,old_data = read_website(url)
     # get the_time and pokemon data from responce

@@ -6,108 +6,148 @@ import datetime
 from shapely.geometry import Point
 from pymongo import MongoClient
 from utils.utils import  point_is_in_manhattan
+from common.fetcher import read_nymetro_website
+import concurrent.futures
+from itertools import filterfalse
 from common.process_data import process_pokemons
 from concurrent.futures import ThreadPoolExecutor
-import requests
+from utils import db
 import logging
 logging.basicConfig(level=logging.ERROR)
 
 logger=logging.getLogger()
 
-def read_website(session=requests.Session(),the_time=0,old_data=[]):
-    logger.debug(read_website.__name__)
-    mons=",".join([str(x) for x in range(1,386)])
-    now=int(time.time())
-    # prune data for pokemoon that have despawned 
-    old_data=[x for x in old_data if int(x.get('despawn')) > now]
+def get_and_process_nymetro_data(db, params=[],old_data=[],control_settings=[],control_data={}):
+    logger.debug("fetching...")
+    results = read_nymetro_website(params=params)
+    if results:
+        len_pokemon = len( results.get('pokemons') ) if results and results.get('pokemons') else -1
+        
+        if 'pokemons' in results.keys():
+            pokemon_data=results.get('pokemons')
+            del results['pokemons']
+            params.update(results)                                
+        else:
+            logger.error("no pokemons in results?")
+            return (params,old_data)
+        
+        try:
+            now=int(time.time())
+            #filter out disaper_time older (>) then now
+            old_data[:]=filterfalse(lambda t: now > t['disappear_time']//1000,old_data)
+        except (TypeError) as e:
+            raise e
+        
+        old_encounter_list=[x['encounter_id'] for x in old_data]
+        # return pokemon_data whose encounter_id is not in old_data's encounter_id
+        pokemon_data[:]=filterfalse(lambda x: x['encounter_id'] in old_encounter_list, pokemon_data)
+        # pokemon_data = [x for x in pokemon_data if x['encounter_id'] not in [o['encounter_id'] for o in old_data]]
+        logger.debug(f"read_nymetro_website returned {len(pokemon_data)}({len_pokemon}) pokemons (old:{len(old_data)})")
+        old_data += pokemon_data
 
-    # GET REQUEST
-    r=session.get(url=session.url,params={"since":the_time, "mons":mons})
-    data = r.json()
+        
+        control_settings=[x for x in db.iControlIt.find({},{'last_updated':True,'iSawIt_id':True,'_id':False})]
+        for control_setting in control_settings:
+            last_updated=control_setting['last_updated']
+            iSawIt_id=control_setting['iSawIt_id']
+            if iSawIt_id in control_data.keys():
+                cached_last_updated=control_data[iSawIt_id]['control']['last_updated']
+                if last_updated == cached_last_updated:
+                    continue
+            logger.info(f'getting settings for {iSawIt_id}')
+            control_data[iSawIt_id]={
+                'control':db.iControlIt.find_one( {'iSawIt_id':iSawIt_id} ),
+                'pokemon_data': list(db.get_collection(f"iSawIt_{iSawIt_id}").find({}).sort("_id"))
+                }
 
-    # get the_time and pokemon data from responce
-    meta_data = data.get('meta') if data else None
-    pokemon_data = data.get('pokemons') if data else None
-    the_time = meta_data.get('inserted') if meta_data else int(time.time())
-    if type(data) == type([]):
-        logger.debug(f"===got {len(pokemon_data)}===")
-    else:
-        logger.error(f"got unexpected data format of type {type(data)}")
-   
-    # pokemons is list of all new data, remove entries if it's a duplicated (in old_data)
-    pokemons_all = [x for x in pokemon_data if x not in old_data] if pokemon_data else []
-    
+        #pull pokemon settings for all users
+        # botid_to_collections={x['iSawIt_id'] : {'control':x,'pokemon_data': list(db.get_collection(f"iSawIt_{x['iSawIt_id'] }").find({}).sort("_id"))} for x  in control_data}                
+        # for each user, process the data 
+        # with  concurrent.futures.ThreadPoolExecutor(max_workers=len(control_data))  as executor: 
+        #     futures = {
+        #                 executor.submit(    
+        #                                   process_pokemons, 
+        #                                   info_dict['control'], 
+        #                                   info_dict['poke_rules'], 
+        #                                   pokemon_data
+        #                                ) for info_dict in botid_to_collections.values()
+        #                 }
+        with  concurrent.futures.ThreadPoolExecutor()  as executor: 
+            futures=[]
+            for info_dict in control_data.values():
+                control_info=info_dict['control']
+                requirements=info_dict['pokemon_data']
+                futures += [ executor.submit(process_pokemons, control_info, requirements, pokemon_data.copy()) ]
+                
+            try:
+                concurrent.futures.wait(futures)
+            except Exception as exc:
+                logger.error(f"process_pokemon generated an exception: {exc}")
+                raise exc
 
-    pokemons = [x for x in pokemons_all if point_is_in_manhattan(float(x.get('lng')),float(x.get('lat')))]
-    pokemons=sorted(pokemons,key=lambda k: (int(k['attack']),int(k['stamina']),int(k['defense']),int(k['level'])), reverse=True )
-    return the_time, pokemons, old_data
+
+    # return (params, old_data)
+    return params
 
 
 def main():
-    url="http://nycpokemap.com/query2.php"
-    headers = {'accept': '*/*',
-        'accept-encoding': 'gzip,deflate,br',
-        'accept-language': 'en-US,en;q=0.9',
-        'authority': 'nycpokemap.com',
-        'dnt': '1',
-        'referer': 'https://nycpokemap.com/',
-        'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.140 Safari/537.36',
-        'x-requested-with': 'XMLHttpRequest'}
-    mongodb_user=os.environ.get('MONGO_USER')
-    mongodb_pass=os.environ.get('MONGO_PASS')
-    
-    logger.debug("logging into mongo")
-    with requests.Session() as s, \
-        MongoClient(f"mongodb+srv://{mongodb_user}:{mongodb_pass}@cluster0-m6kv9.mongodb.net/nyc") as conn:
-        db = conn.get_database() 
-        logger.debug("logging into mongo success")
 
-        s.headers=headers
-        s.url=url
-        now=time.time()
-        polling_interval=60.0
-        old_data=[]
-        the_time=int(now)
-        last_query_ts=now
-        now_pre_query=now
-        
-        while True:
-            try:
-                now=time.time()
-                seconds_elapsed = now-now_pre_query
-                if seconds_elapsed < polling_interval:
-                    sleep_time=max(0.0,(polling_interval - seconds_elapsed - 2.0))
-                    logger.debug(f"~~~(Z {sleep_time:3.2f} Z)~~~~")
-                    time.sleep(sleep_time)
-                the_time_old=the_time
-                now_pre_query=time.time()
-                #pull the data from www
-                the_time, pokemon_data, old_data = read_website(s, the_time, old_data)
-                server_interval = int(the_time-the_time_old)
-                now_post_query=time.time()
-                query_interval=int(now_post_query - last_query_ts)
-                last_query_ts=now_post_query
-                the_time_str=datetime.datetime.fromtimestamp(the_time).strftime('%H:%M:%S')
-                logger.debug(f"~~~query interval: {query_interval:3d} ~~ {the_time_str} ~~ {server_interval:3d}s ~~ the_time interval: {the_time-the_time_old:3d}:s ~~~~")
-                
-                #read control data
-                control_data=[x for x in db.iControlIt.find({})]
-                #pull pokemon settings for all users
-                botid_to_collections={x['iSawIt_id'] : {'control':x,'pokemon_data': list(db.get_collection(f"iSawIt_{x['iSawIt_id'] }").find({}).sort("_id"))} for x  in control_data}                
-                # for each user, process the data 
-                with  ThreadPoolExecutor(max_workers=max(2,len(control_data)))  as executor: 
-                    for info_dict in botid_to_collections.values():
-                        control_info=info_dict['control']
-                        requirements=info_dict['pokemon_data']
-                        executor.submit(process_pokemons, control_info, requirements, pokemon_data)
-                
-                
-            except KeyboardInterrupt:
-                logger.info("interrupted")
-                break
-            except Exception as e:
-                logger.error(e)
-                pass
+   # get_data_once_and_print()
+    logger.info("main()...")
+    token='4ah+lvEDKrfzodM3psdg1P7jeIk3d2uRYK4dV+omN4o='
+    
+    params={
+        'bigKarp': 'false',
+        'eids': '0',
+        'exEligible': 'false',
+        'exMinIV': '0',
+        'gyms': 'false',
+        'lastgyms': 'false',
+        'lastpokemon': 'true',
+        'lastpokestops': 'false',
+        'lastslocs': 'false',
+        'lastspawns': 'false',
+        'luredonly': 'false',
+        'minIV': '0',
+        'minLevel': '0',
+        'neLat': '40.8968744414486',
+        'neLng': '-73.84092242090662',
+        'oNeLat': '40.8968744414486',
+        'oNeLng': '-73.84092242090662',
+        'oSwLat': '40.56699275763961',
+        'oSwLng': '-74.13823992578943',
+        'pokemon': 'true',
+        'pokestops': 'false',
+        'prevMinIV': '0',
+        'prevMinLevel': '0',
+        'reids': '0',
+        'scanned': 'false',
+        'spawnpoints': 'false',
+        'swLat': '40.56699275763961',
+        'swLng': '-74.13823992578943',
+        'timestamp': f'{int(time.time())}',
+        'tinyRat': 'false',
+        'token': f'{token}'
+    }
+
+    
+
+    while True:
+        try:
+            get_and_process_nymetro_data(db,params)
+
+            # elapsed=time.time()-now
+            # delay=10
+            # remaining=10-elapsed
+            # if remaining < 0:
+            #     remaining=0
+            # time.sleep(remaining)
+        except KeyboardInterrupt:
+            logger.info("User Interupted")
+            break
+        except Exception as e:
+            logger.error(e)
+            raise e
 
 if __name__ == "__main__":
     logger.debug("main called")
