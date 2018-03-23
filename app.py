@@ -38,7 +38,7 @@ def read_website(session=requests.Session(),the_time=0,old_data=[]):
     pokemons_all = [x for x in pokemon_data if x not in old_data] if pokemon_data else []
     
 
-    pokemons = [x for x in pokemons_all if point_is_in_manhattan(float(x.get('lng')),float(x.get('lat')))]
+    pokemons = [ x for x in pokemons_all if point_is_in_manhattan(Point(x.get('lng'),x.get('lat'))) ]
     pokemons=sorted(pokemons,key=lambda k: (int(k['attack']),int(k['stamina']),int(k['defense']),int(k['level'])), reverse=True )
     return the_time, pokemons, old_data
 
