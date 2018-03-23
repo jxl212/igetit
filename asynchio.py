@@ -6,7 +6,7 @@ import time,datetime
 from shapely.geometry import  Point
 from pokemon import Pokemon
 from pprint import pprint
-from utils.utils import get_hoods_to_listen_for, process_message_for_groupme, point_is_in_manhattan,send_groupme
+from utils.utils import  point_is_in_manhattan, send_groupme
 from collections import Counter
 
 async def read_website(app):
@@ -39,8 +39,6 @@ async def read_website(app):
 
         # pokemons is list of all new data, remove entries if it's a duplicated (in old_data)
         pokemons = [x for x in pokemon_data if x not in old_data] if pokemon_data else []
-
-        # hoods_we_listen_for = get_hoods_to_listen_for()
 
         for raw_p in sorted(pokemons,key=lambda k: int(k['cp']),reverse=True ):
             loc = Point(float(raw_p.get('lng')),float(raw_p.get('lat')))

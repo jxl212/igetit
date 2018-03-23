@@ -8,7 +8,6 @@ from collections import Counter, defaultdict
 from pyproj import Proj
 from shapely.geometry import shape, Point
 from common.fetcher import load_url 
-import pokemon
 import threading
 from . import logger
 from . import db, mongo_client, mongodb_pass, mongodb_user
