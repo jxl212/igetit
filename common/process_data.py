@@ -34,7 +34,7 @@ def process_one(control_info, pokemon_reqs, raw_p):
 
                 if p.is_in_manhattan and p.distance <= distance_req: 
                     # logger.debug(f"distance: {distance_req} > {p.distance}")
-                    # send_groupme(control_info['iSawIt_id'],p)
+                    send_groupme(control_info['iSawIt_id'],p)
                     logger.info(f"[{control_info['iSawIt_id']}] - {p}")
                     return
             
